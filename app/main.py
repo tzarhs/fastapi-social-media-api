@@ -1,8 +1,12 @@
 from typing import Optional
 from urllib import response
 
+from .database import SessionDep, create_db_and_tables
+from .models import Post
+
 from fastapi import FastAPI, HTTPException, Response
 from fastapi.params import Body
+from sqlmodel import select, Session
 from httpx import post
 from pydantic import BaseModel
 from random import randrange
@@ -10,28 +14,21 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 import time
 
-app =  FastAPI()    
 
-# Schema
-class Post(BaseModel):
-    title: str
-    content: str
-    published: bool = True
-    rating: Optional[int] = None
+app =  FastAPI()   
+
+@app.on_event("startup")
+def on_startup():
+    create_db_and_tables()
 
 
-while True:
-    try:
-        conn = psycopg2.connect(host='localhost', database='fastapi', user='postgres', password='co3w!da4', cursor_factory=RealDictCursor)
-        curr = conn.cursor()
-        print('Database connection was successful!')
-        break
-    except Exception as error:
-        print('Connection to database failed')
-        print('Error:', error)
-        time.sleep(5)
+@app.post("/posts")
+def create_post(post: Post, session: SessionDep) -> Post:
+    # session.add(post)
+    # session.commit()
+    # session.refresh(post)
+    return post
 
-# my_posts = [{"title": "title of post 1", "content": "content of post 1", "id": 1}, {"title": "favorite foods", "content": "I like pizza", "id": 2}]
 
 def find_post(id):
     for post in get_posts:
