@@ -34,7 +34,7 @@ while True:
 # my_posts = [{"title": "title of post 1", "content": "content of post 1", "id": 1}, {"title": "favorite foods", "content": "I like pizza", "id": 2}]
 
 def find_post(id):
-    for post in my_posts:
+    for post in get_posts:
         if post['id'] == id:
             return post
         
@@ -64,33 +64,34 @@ def create_posts(post:Post):
     return {"data": new_post}
 
 @app.get('/posts/{id}')
-def get_post(id: int, response:Response):
-    post = find_post(id)
-   
+def get_post(id: int):
+    curr.execute("""SELECT * FROM posts WHERE id = %s""", (str(id)))
+    post = curr.fetchone()
+
     if not post:
-        raise HTTPException(status_code=404, detail=f"post with id: {id} was not found")
-        # response.status_code = 404
-        # return {"message": f"post with id: {id} was not found"}
-    
+        raise HTTPException(status_code=404, detail=f"post with id: {id} does not exist")
+   
     return {"post_details": post}
 
 @app.delete('/posts/{id}', status_code=204)
 def delete_post(id: int):
-    index = find_index_post(id)
-    if not index:
+    curr.execute("""DELETE FROM posts WHERE id = %s RETURNING *""",(str(id),))
+    post = curr.fetchone()
+    conn.commit()
+
+    if post == None :
         raise HTTPException(status_code=404, detail=f"post with id: {id} does not exist")
     
-    my_posts.pop(index)
-
     return Response(status_code=204)
 
 @app.put('/posts/{id}')
 def update_post(id: int, post: Post):
-    index = find_index_post(id)
-    if index == None:
+    curr.execute("""UPDATE posts SET title = %s, content = %s, published = %s WHERE id = %s RETURNING *""",(post.title,post.content,post.published,str(id)))
+    updated_post = curr.fetchone()
+    conn.commit()
+
+    if updated_post == None:
         raise HTTPException(status_code=404, detail=f"post with id: {id} does not exist")
     
-    post_dict = post.dict()
-    post_dict['id'] = id
-    my_posts[index] = post_dict
-    return {'data': post_dict}
+   
+    return {'data': updated_post}
