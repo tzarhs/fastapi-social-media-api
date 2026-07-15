@@ -1,10 +1,10 @@
 from typing import Optional
 from urllib import response
 
-from .database import SessionDep, create_db_and_tables
-from .models import Post
+from .database import engine,SessionLocal,get_db
+from . import models
 
-from fastapi import FastAPI, HTTPException, Response
+from fastapi import FastAPI, HTTPException, Response, Depends
 from fastapi.params import Body
 from sqlmodel import select, Session
 from httpx import post
@@ -14,21 +14,19 @@ import psycopg2
 from psycopg2.extras import RealDictCursor
 import time
 
+models.Base.metadata.create_all(bind=engine)
 
-app =  FastAPI()   
+app =  FastAPI()
 
-@app.on_event("startup")
-def on_startup():
-    create_db_and_tables()
+class Post(BaseModel):
+    title: str
+    content: str
+    published: bool = True
 
-
-@app.post("/posts")
-def create_post(post: Post, session: SessionDep) -> Post:
-    # session.add(post)
-    # session.commit()
-    # session.refresh(post)
-    return post
-
+@app.get("/sqlalchemy")
+def test_posts(db: Session = Depends(get_db)):
+    posts = db.query(models.Post).all()
+    return {"data": posts}
 
 def find_post(id):
     for post in get_posts:
@@ -45,18 +43,25 @@ def read_root():
     return {"Hello": "Welcome to my API"}
 
 @app.get("/posts")
-def get_posts():
-    curr.execute("""SELECT * FROM posts""")
-    posts = curr.fetchall()
+def get_posts(db: Session = Depends(get_db)):
+    # curr.execute("""SELECT * FROM posts""")
+    # posts = curr.fetchall()
+    posts = db.query(models.Post).all()
     return {"data": posts}
 
 @app.post('/posts',status_code=201)
-def create_posts(post:Post):
-    curr.execute("""INSERT INTO posts (title,content,published) VALUES (%s,%s,%s) RETURNING *""",(post.title,post.content,post.published))
-    new_post = curr.fetchone()
+def create_posts(post:Post, db: Session = Depends(get_db)):
+    # curr.execute("""INSERT INTO posts (title,content,published) VALUES (%s,%s,%s) RETURNING *""",(post.title,post.content,post.published))
+    # new_post = curr.fetchone()
 
-    #To save the changes to the database
-    conn.commit()
+    # #To save the changes to the database
+    # conn.commit()
+
+    new_post = models.Post(**post.dict())
+
+    db.add(new_post)
+    db.commit()
+    db.refresh(new_post)
     
     return {"data": new_post}
 
