@@ -1,113 +1,28 @@
-from typing import Optional
+from typing import Optional,List
 from urllib import response
 
 from .database import engine,SessionLocal,get_db
-from . import models
+from . import models, schemas,utils
 
 from fastapi import FastAPI, HTTPException, Response, Depends
 from fastapi.params import Body
 from sqlmodel import select, Session
-from httpx import post
-from pydantic import BaseModel
+
 from random import randrange
 import psycopg2
 from psycopg2.extras import RealDictCursor
 import time
+from .routers import posts, users
 
 models.Base.metadata.create_all(bind=engine)
 
 app =  FastAPI()
 
-class Post(BaseModel):
-    title: str
-    content: str
-    published: bool = True
 
-@app.get("/sqlalchemy")
-def test_posts(db: Session = Depends(get_db)):
-    posts = db.query(models.Post).all()
-    return {"data": posts}
-
-def find_post(id):
-    for post in get_posts:
-        if post['id'] == id:
-            return post
-        
-def find_index_post(id):
-    for i,p in enumerate(my_posts):
-        if p['id'] == id:
-            return i
+app.include_router(posts.router)
+app.include_router(users.router)
 
 @app.get("/")
 def read_root():
     return {"Hello": "Welcome to my API"}
 
-@app.get("/posts")
-def get_posts(db: Session = Depends(get_db)):
-    # curr.execute("""SELECT * FROM posts""")
-    # posts = curr.fetchall()
-    posts = db.query(models.Post).all()
-    return {"data": posts}
-
-@app.post('/posts',status_code=201)
-def create_posts(post:Post, db: Session = Depends(get_db)):
-    # curr.execute("""INSERT INTO posts (title,content,published) VALUES (%s,%s,%s) RETURNING *""",(post.title,post.content,post.published))
-    # new_post = curr.fetchone()
-
-    # #To save the changes to the database
-    # conn.commit()
-
-    new_post = models.Post(**post.dict())
-    db.add(new_post)
-    db.commit()
-    db.refresh(new_post)
-    
-    return {"data": new_post}
-
-@app.get('/posts/{id}')
-def get_post(id: int, db: Session = Depends(get_db)):
-    # curr.execute("""SELECT * FROM posts WHERE id = %s""", (str(id)))
-    # post = curr.fetchone()
-
-    post = db.query(models.Post).filter(models.Post.id == id).first()
-
-    if not post:
-        raise HTTPException(status_code=404, detail=f"post with id: {id} does not exist")
-   
-    return {"post_details": post}
-
-@app.delete('/posts/{id}', status_code=204)
-def delete_post(id: int, db: Session = Depends(get_db)):
-    # curr.execute("""DELETE FROM posts WHERE id = %s RETURNING *""",(str(id),))
-    # post = curr.fetchone()
-    # conn.commit()
-
-    post = db.query(models.Post).filter(models.Post.id == id)
-
-
-
-    if post.first() == None :
-        raise HTTPException(status_code=404, detail=f"post with id: {id} does not exist")
-
-    post.delete(synchronize_session=False)
-    db.commit()
-    
-    return Response(status_code=204)
-
-@app.put('/posts/{id}')
-def update_post(id: int, post: Post, db: Session = Depends(get_db)):
-    # curr.execute("""UPDATE posts SET title = %s, content = %s, published = %s WHERE id = %s RETURNING *""",(post.title,post.content,post.published,str(id)))
-    # updated_post = curr.fetchone()
-    # conn.commit()
-
-    post_query = db.query(models.Post).filter(models.Post.id  == id)
-
-
-    if post_query.first() == None:
-        raise HTTPException(status_code=404, detail=f"post with id: {id} does not exist")
-
-    post_query.update(post.dict(), synchronize_session=False)
-    db.commit()
-    
-   
-    return {'updated data': post_query.first()}
