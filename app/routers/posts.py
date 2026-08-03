@@ -1,12 +1,13 @@
 from typing import List
 
-from .. import models, schemas
+from .. import models, schemas, oauth2
 from fastapi import  HTTPException, Response, Depends, APIRouter
 from sqlalchemy.orm import Session
 from ..database import get_db
 
 router = APIRouter(
     prefix="/posts",
+    tags = ["Posts"]
 )
 
 @router.get("/", response_model = List[schemas.Post])
@@ -17,7 +18,7 @@ def get_posts(db: Session = Depends(get_db)):
     return posts
 
 @router.post('/',status_code=201, response_model = schemas.Post)
-def create_posts(post: schemas.PostCreate, db: Session = Depends(get_db)):
+def create_posts(post: schemas.PostCreate, db: Session = Depends(get_db), get_current_user: schemas.UserLogin = Depends(oauth2.get_current_user)):
     # curr.execute("""INSERT INTO posts (title,content,published) VALUES (%s,%s,%s) RETURNING *""",(post.title,post.content,post.published))
     # new_post = curr.fetchone()
 

@@ -6,6 +6,7 @@ from ..database import get_db
 
 router = APIRouter(
      prefix="/users",
+     tags = ["Users"]
 )
 
 @router.get('/{id}', response_model = schemas.UserOut)
