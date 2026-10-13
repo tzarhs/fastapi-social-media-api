@@ -18,13 +18,13 @@ def get_posts(db: Session = Depends(get_db)):
     return posts
 
 @router.post('/',status_code=201, response_model = schemas.Post)
-def create_posts(post: schemas.PostCreate, db: Session = Depends(get_db), get_current_user: schemas.UserLogin = Depends(oauth2.get_current_user)):
+def create_posts(post: schemas.PostCreate, db: Session = Depends(get_db), user_id: int = Depends(oauth2.get_current_user)):
     # curr.execute("""INSERT INTO posts (title,content,published) VALUES (%s,%s,%s) RETURNING *""",(post.title,post.content,post.published))
     # new_post = curr.fetchone()
 
     # #To save the changes to the database
     # conn.commit()
-
+    print(user_id)
     new_post = models.Post(**post.dict())
     db.add(new_post)
     db.commit()
