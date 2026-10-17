@@ -1,18 +1,10 @@
-from typing import Optional,List
-from urllib import response
 
-from .database import engine,SessionLocal,get_db
-from . import models, schemas,utils
-
-from fastapi import FastAPI, HTTPException, Response, Depends
-from fastapi.params import Body
-from sqlmodel import select, Session
-
-from random import randrange
-import psycopg2
-from psycopg2.extras import RealDictCursor
-import time
+from .database import engine
+from . import models
+from fastapi import FastAPI
 from .routers import posts, users, auth
+
+from .config import settings
 
 models.Base.metadata.create_all(bind=engine)
 

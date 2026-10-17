@@ -1,4 +1,5 @@
 from datetime import datetime
+from typing import Optional
 
 from pydantic import BaseModel,EmailStr
 
@@ -12,7 +13,10 @@ class PostCreate(PostBase):
     pass
 
 class Post(PostBase):
+    id: int
     created_at: datetime
+    user_id: int
+    owner: UserOut
 
     class Config:
         orm_mode = True
@@ -38,4 +42,4 @@ class Token(BaseModel):
     token_type: str
 
 class TokeData(BaseModel):
-    id: str | None = None
+    id: Optional[int] = None

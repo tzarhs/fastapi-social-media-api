@@ -1,4 +1,4 @@
-from typing import List
+from typing import List, Optional
 
 from .. import models, schemas, oauth2
 from fastapi import  HTTPException, Response, Depends, APIRouter
@@ -11,21 +11,21 @@ router = APIRouter(
 )
 
 @router.get("/", response_model = List[schemas.Post])
-def get_posts(db: Session = Depends(get_db)):
+def get_posts(db: Session = Depends(get_db), limit: int = 2,skip:int = 0,search: Optional[str] = ""):
     # curr.execute("""SELECT * FROM posts""")
     # posts = curr.fetchall()
-    posts = db.query(models.Post).all()
+    posts = db.query(models.Post).filter(models.Post.title.contains(search)).limit(limit).offset(skip).all()
     return posts
 
 @router.post('/',status_code=201, response_model = schemas.Post)
-def create_posts(post: schemas.PostCreate, db: Session = Depends(get_db), user_id: int = Depends(oauth2.get_current_user)):
+def create_posts(post: schemas.PostCreate, db: Session = Depends(get_db), current_user: int = Depends(oauth2.get_current_user)):
     # curr.execute("""INSERT INTO posts (title,content,published) VALUES (%s,%s,%s) RETURNING *""",(post.title,post.content,post.published))
     # new_post = curr.fetchone()
 
     # #To save the changes to the database
     # conn.commit()
-    print(user_id)
-    new_post = models.Post(**post.dict())
+
+    new_post = models.Post(user_id=current_user.id, **post.dict())
     db.add(new_post)
     db.commit()
     db.refresh(new_post)
@@ -45,17 +45,18 @@ def get_post(id: int, db: Session = Depends(get_db)):
     return  post
 
 @router.delete('/{id}', status_code=204)
-def delete_post(id: int, db: Session = Depends(get_db)):
+def delete_post(id: int, db: Session = Depends(get_db), current_user: int = Depends(oauth2.get_current_user)):
     # curr.execute("""DELETE FROM posts WHERE id = %s RETURNING *""",(str(id),))
     # post = curr.fetchone()
     # conn.commit()
 
     post = db.query(models.Post).filter(models.Post.id == id)
 
-
-
     if post.first() == None :
         raise HTTPException(status_code=404, detail=f"post with id: {id} does not exist")
+
+    if post.first().user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to perform requested action")   
 
     post.delete(synchronize_session=False)
     db.commit()
@@ -63,16 +64,21 @@ def delete_post(id: int, db: Session = Depends(get_db)):
     return Response(status_code=204)
 
 @router.put('/{id}', response_model = schemas.Post   )
-def update_post(id: int, post: schemas.PostCreate, db: Session = Depends(get_db)):
+def update_post(id: int, post: schemas.PostCreate, db: Session = Depends(get_db), current_user: int = Depends(oauth2.get_current_user)):
     # curr.execute("""UPDATE posts SET title = %s, content = %s, published = %s WHERE id = %s RETURNING *""",(post.title,post.content,post.published,str(id)))
     # updated_post = curr.fetchone()
     # conn.commit()
 
     post_query = db.query(models.Post).filter(models.Post.id  == id)
 
+    post = post_query.first()
 
-    if post_query.first() == None:
+
+    if post == None:
         raise HTTPException(status_code=404, detail=f"post with id: {id} does not exist")
+
+    if post.user_id != current_user.id:
+        raise HTTPException(status_code=403, detail="Not authorized to perform requested action") 
 
     post_query.update(post.dict(), synchronize_session=False)
     db.commit()
